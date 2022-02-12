@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+	<head>
+		<meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>注册及登录</title>
+		<link href="/css/bootstrap.min.css" rel="stylesheet" />
+	</head>
+	<body background="/image/login.jpg" style="background-repeat: no-repeat;background-size: 100% 100%;height: 750px">
+		<div class="modal-dialog container" style="margin-top: 10%;width: 400px">
+			<div class="alert alert-danger text-center" style="position: absolute;z-index: 1;width: 92%;display: none;"></div>
+			<div class="modal-content">
+				<div class="modal-header">
+					<h2 class="modal-title text-center" id="modalLabel"
+						th:text="${type eq 'reg'?'注&nbsp;&nbsp;&nbsp;&nbsp;册':'登&nbsp;&nbsp;&nbsp;&nbsp;录'}"></h2>
+				</div>
+				<div class="modal-body" id="model-body">
+					<div class="form-group">
+						<input id="username" type="text" class="form-control" placeholder="用户名由2-20位字母、数字、下划线或汉字组成">
+					</div>
+					<div class="form-group">
+						<input id="password" type="password" class="form-control" placeholder="密码由6-20位字母、数字、下划线组成">
+					</div>
+				</div>
+				<div class="modal-footer button-group">
+					<div class="form-group">
+						<button id="login" class="btn btn-info form-control">登&nbsp;&nbsp;&nbsp;&nbsp;录</button>
+					</div>
+					<div class="form-group">
+						<button id="register" class="btn btn-info form-control">注&nbsp;&nbsp;&nbsp;&nbsp;册</button>
+					</div>
+				</div>
+
+			</div><!-- /.modal-content -->
+		</div><!-- /.modal -->
+		<script src="/js/jquery-3.5.1.min.js"></script>
+		<script type="text/javascript">
+			// 给警告框修改内容样式
+			function alertWarn(str) {
+				$(".alert-danger").text(str).show().fadeOut(2500);
+			}
+
+			$(".btn-info").click(function() {
+				var $this = $(this);
+				// 设置模态框标题
+				$("#modalLabel").text($this.text());
+				var username = $("#username").val();
+				var password = $("#password").val();
+				// 用户名和密码校验输入框
+				if (!/^[a-zA-Z0-9_\u4e00-\u9fa5]{2,20}$/.test(username)) {
+					alertWarn("用户名由2-20位字母、数字、下划线或汉字组成");
+				} else if (!/^[a-zA-Z0-9_]{6,20}$/.test(password)) {
+					alertWarn("密码由6-20位字母、数字、下划线组成");
+				} else {
+					sessionStorage.user = username; // 把数据保存在sessionStorage中，便于跨页面共享数据
+					// 发送到服务器校验
+					$.ajax({
+						url: "/test/testuser",
+						data: {
+							username: username,
+							password: password,
+							type: $this.attr("id")
+						},
+						type: "post",
+						success: function(data) {
+							handleVerify(data);
+						}
+					})
+				}
+			})
+			
+			// 处理验证返回的信息
+			function handleVerify(data) {
+				var state = data.state;
+				// 6为登录成功，7为登录失败，8为注册成功，9为注册失败，10为重复登录
+				switch (state) {
+					case 6:
+						location.href = "/chat/tochat/" + sessionStorage.user //+ "/" + data.username;
+						// 	window.location.href="chat.html"
+						break;
+					case 7:
+						alertWarn("用户名或密码不正确！");
+						break;
+					case 8:
+						alertWarn("注册成功!请登录！");
+						$("#usename").val("");
+						$("#password").val("");
+						break;
+					case 9:
+						alertWarn("已存在该用户！");
+						break;
+					case 10:
+						alertWarn("不要重复登录！");
+						break;
+					default:
+						alertWarn(data.error);
+						break;
+				}
+			}
+		</script>
+	</body>
+</html>

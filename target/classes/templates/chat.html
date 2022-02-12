@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+	<head>
+		<meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>畅所欲言吧</title>
+		<link href="/css/bootstrap.min.css" rel="stylesheet" />
+	</head>
+	<body style="padding-top: 70px;">
+		<div class="container">
+			<div style="padding: 1%;background: rgb(35,34,36)">
+				<div class="alert alert-info text-center" style="position: absolute;width: 80%; z-index: 1;display: none;"></div>
+				<h1 style="color: #ffffff">
+					<strong>你好<p th:text="${username}" style="display: inline"></p>,欢迎来到聊天室</strong>
+				</h1>
+			</div>
+
+			<div style="height: 450px;word-wrap:break-word;word-break: break-all;">
+				<!-- 用户列表 -->
+				<div style="height: 100%;overflow-y: scroll;padding: 0;background-color: #eee" class="col-md-2 col-xs-2">
+					<ul class="nav nav-tab vertical-tab">
+						<li class="bg-success"><a href="#All" class="active" role="tab" data-toggle="tab">所有人</a></li>
+					</ul>
+				</div>
+				<!-- 会话列表 -->
+				<div style="height: 100%;overflow-y: scroll;background-color: #ffffff" class="bg-info tab-content vertical-tab-content col-md-10 col-xs-10">
+					<div role="tabpanel" class="tab-pane active text-muted" id="All"></div>
+				</div>
+
+			</div>
+			<!-- 输入框及发送按钮 -->
+			<div style="display: flex;width: 100%;">
+				<button style="margin-bottom:5px;width: 17%" class="btn btn-lg btn-primary pull-right" onclick="javascript:{socket.close()}">退出账号</button>
+				<div style="width: 83%;">
+					<div style="display: flex"  >
+						<textarea class="form-control" type="text" style="resize: none;width: 93%" ></textarea>
+						<span class="input-group-btn" style="width: 7%">
+							<button class="btn btn-lg btn-success" onclick="send()">发送</button>
+						</span>
+					</div>
+				</div>
+
+			</div>
+
+		</div>
+	</body>
+	<style>
+		h1 strong{
+			position: relative;
+			animation:mymove 15s linear 0s infinite;
+		}
+		@keyframes mymove{
+			0%   {left:0%;}
+			25%  {left:40%;}
+			50%  {left:70%;}
+			75%  {left:40%;}
+			100% {left:0%;}
+		}
+
+	</style>
+
+	<script src="/js/jquery-3.5.1.min.js"></script>
+	<script src="/js/bootstrap.min.js"></script>
+	<script type="text/javascript">
+		var socket;
+		// 判断浏览器支持WebSocket
+		if ("WebSocket" in window) {
+		// 使用location.host直接识别服务器地址
+			socket = new WebSocket("ws://" + location.host + "/webSocket/" + sessionStorage.user);
+			// 连通之后的回调事件
+			socket.onopen = function(evt) {};
+			socket.onclose = function(evt) {
+				sessionStorage.user = null;
+				location.href = "/login/log";
+			}
+			// 接收后台服务端的消息
+			socket.onmessage = function(evt) {
+				var msg = evt.data;
+				var obj = JSON.parse(msg);
+				handleMsg(obj);
+			}
+		} else {
+			alert("浏览器不支持WebSocket！")
+		}
+		$(".nav-tab").on("click", "li", function() {
+			$(this).siblings().removeClass("bg-success");
+			$(this).addClass("bg-success").children().attr("count", 0).children().remove();
+		})
+
+		// 普通发送消息
+		function send() {
+			// 将发送文字展示在对应用户的会话框里并发送到服务端
+			var to = $(".nav-tab .active").attr("href").substr(1);
+			var content = $(".form-control").val();
+			var date = new Date().toLocaleString();
+			
+			var text = JSON.stringify({
+				to: to,
+				content: content,
+				date: date
+			});
+			// 判断消息长度是否大于服务器的文本缓冲区，8192个字符为f服务器默认最大接收消息字符数
+			var tooLong = text.length - 8192;
+			if (tooLong > 0) {
+				$(".alert-info").text("消息过长，请少发" + tooLong + "个字").show().fadeOut(5000);
+				return;
+			}
+			if (to != "All") {
+				$(".tab-content div[id='" + to + "']").append("<h5><i>" + date + "</i><br/><strong>我：</strong>" + content + "</h5>");
+			}
+			$(".form-control").val("");
+			socket.send(text);
+		}
+
+		// 处理服务端的推送消息
+		function handleMsg(obj) {
+			var msgType = obj.msgType;
+			switch (msgType) {
+				case 1: // 1代表上线
+					var username = obj.username;
+					$(".alert-info").text(username + "上线了哦").show().fadeOut(5000);
+					//把用户和会话加入列表当中
+					$(".nav-tab").append("<li><a href='#" + username + "' role='tab' data-toggle='tab' count=0>" + username + "</a></li>");
+					$(".tab-content").append("<div role='tabpanel' class='tab-pane' id='" + username + "'></div>");
+					break;
+				case 2: //2代表下线
+					var username = obj.username;
+					$(".alert-info").text(username + "下线了啊").show().fadeOut(5000);
+					//把用户从左侧列表当中移除
+					$(".nav-tab a[href='#" + username + "']").parent().remove();
+					$("#" + username).remove();
+					break;
+				case 3: //3代表在线名单
+					//把用户名单和会话加入到相应列表当中
+					var userList = obj.userList.substring(1, obj.userList.length - 1);
+					if (userList.length > 0) {
+						userList = userList.split(", ")
+					}
+					var userArray = []; // 用户列表
+					var contentArray = []; // 会话列表
+					for (var i = 0, len = userList.length; i < len; ++i) {
+						var username = userList[i];
+						userArray.push("<li><a href='#" + username + "' role='tab' data-toggle='tab' count=0>" + username + "</a></li>");
+						contentArray.push("<div role='tabpanel' class='tab-pane' id='" + username + "'></div>");
+					}
+					$(".nav-tab").append(userArray.join(""));
+					$(".tab-content").append(contentArray.join(""));
+					break;
+				case 4: //4代表普通消息
+					var fromUser = obj.from;
+					// 把对方发过来的信息追加到相应用户的会话框并将用户移至列表次前面
+					$("#" + fromUser).append("<h5><i>" + obj.date + "</i><br/><strong>" + fromUser + "：</strong>" + obj.content +
+							"</h5>");
+					var $user = $(".nav-tab a[href='#" + fromUser + "']").parent().remove();
+					$(".nav-tab li:first").after($user);
+
+					// 给用户加未读消息数
+					var $userA = $user.children().eq(0);
+					var msgCount = parseInt($userA.attr("count"));
+					$userA.attr("count", ++msgCount);
+					if (msgCount <= 1) {
+						$userA.append("<span class='badge pull-right'>" + msgCount + "</span>");
+					} else {
+						$userA.children().eq(0).text(msgCount);
+					}
+					break;
+				case 5:
+					var fromUser = obj.from;
+					$("#All").append("<h5><i>" + obj.date + "</i><br/><strong>" + fromUser + "：</strong>" + obj.content + "</h5>");
+					break;
+			}
+		}
+	</script>
+
+
+</html>
