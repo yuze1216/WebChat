@@ -74,8 +74,7 @@
 				// 6为登录成功，7为登录失败，8为注册成功，9为注册失败，10为重复登录
 				switch (state) {
 					case 6:
-						location.href = "/chat/tochat/" + sessionStorage.user //+ "/" + data.username;
-						// 	window.location.href="chat.html"
+						location.href = "/chat/tochat/" + sessionStorage.user
 						break;
 					case 7:
 						alertWarn("用户名或密码不正确！");

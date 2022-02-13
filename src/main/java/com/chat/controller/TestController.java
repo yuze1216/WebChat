@@ -44,16 +44,10 @@ public class TestController {
                         LOGGER.info("{} has been login!", username);
                         testMsg.put(Util.STATE, Util.LOG_EXIST);
                     } else {
-                        // 将uuid作为用户访问非登录页面的验证
-                        //String uuid = UUID.randomUUID().toString();
                         testMsg.put(Util.STATE, Util.LOG_SUCCEED);
-                        //testMsg.put(Util.USERNAME, uuid);
                         USERS.put(username, username);
                         LOGGER.info("{} login success!", username);
                         httpSession.setAttribute("username",password);
-                        if (httpSession.getAttribute("username")==null){
-                            System.out.println("没设置上");
-                        }
                     }
                 } else {
                     testMsg.put(Util.STATE, Util.LOG_FAIL);
